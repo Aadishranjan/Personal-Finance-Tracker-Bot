@@ -5,6 +5,7 @@ log.txt
 venv/
 cache/
 __pycache__/
+handlers/__pycache__/
 *.session
 *.session-journal
 feastures.txt

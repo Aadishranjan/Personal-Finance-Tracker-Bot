@@ -1,153 +1,30 @@
 from aiogram import Bot, Dispatcher, types, executor
-from pymongo import MongoClient
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from handlers.expense import add_saving, add_expense
+from handlers.summary import summary, show_records
+from handlers.start import start
+from db import get_all_users
 import pytz
 from datetime import datetime
 import os
 import config
 
-# -----------------------------
-# CONFIG
-# -----------------------------
-BOT_TOKEN = "YOUR_BOT_TOKEN"
-MONGO_URL = "mongodb://localhost:27017"  # or your MongoDB Atlas link
-
 bot = Bot(token=config.BOT_TOKEN)
 dp = Dispatcher(bot)
 
-client = MongoClient(config.MONGO_URL)
-db = client.financebot
-transactions = db.transactions
-
 
 # -----------------------------
-# Start command
+# Register commands
 # -----------------------------
-@dp.message_handler(commands=['start'])
-async def start(msg: types.Message):
-    # Check if user already exists
-    user = db.users.find_one({"user_id": msg.from_user.id})
-    if not user:
-        # Save user in database
-        db.users.insert_one({
-            "user_id": msg.from_user.id,
-            "first_name": msg.from_user.first_name,
-            "username": msg.from_user.username
-        })
 
-    await msg.reply(
-        "👋 Welcome to Personal Finance Tracker Bot!\n\n"
-        "Use these commands:\n"
-        "💸 Add Expense → /expense 500 food\n"
-        "💰 Add Saving → /save 1000\n"
-        "📊 Monthly Summary → /summary\n"
-        "📒 View Records → /records\n"
-    )
+dp.register_message_handler(start, commands=['start'])
+dp.register_message_handler(add_expense, commands=['expense'])
+dp.register_message_handler(add_saving, commands=['save'])
+dp.register_message_handler(summary, commands=['summary'])
+dp.register_message_handler(show_records, commands=['records'])
 
-
-# -----------------------------
-# Add Expense
-# -----------------------------
-@dp.message_handler(commands=['expense'])
-async def add_expense(msg: types.Message):
-    try:
-        _, amount, category = msg.text.split(maxsplit=2)
-        amount = float(amount)
-
-        transactions.insert_one({
-            "user_id": msg.from_user.id,
-            "type": "expense",
-            "amount": amount,
-            "category": category,
-            "date": datetime.now()
-        })
-
-        await msg.reply(f"💸 Added Expense: ₹{amount} for {category}")
-
-    except:
-        await msg.reply("❗ Correct format:\n/expense 500 food")
-
-
-# -----------------------------
-# Add Saving
-# -----------------------------
-@dp.message_handler(commands=['save'])
-async def add_saving(msg: types.Message):
-    try:
-        _, amount = msg.text.split()
-        amount = float(amount)
-
-        transactions.insert_one({
-            "user_id": msg.from_user.id,
-            "type": "saving",
-            "amount": amount,
-            "date": datetime.now()
-        })
-
-        await msg.reply(f"💰 Saving Added: ₹{amount}")
-
-    except:
-        await msg.reply("❗ Correct format:\n/save 1000")
-
-
-# -----------------------------
-# Monthly Summary
-# -----------------------------
-@dp.message_handler(commands=['summary'])
-async def summary(msg: types.Message):
-    user = msg.from_user.id
-    today = datetime.now()
-
-    first_day = datetime(today.year, today.month, 1)
-
-    expenses = list(transactions.find({
-        "user_id": user,
-        "type": "expense",
-        "date": {"$gte": first_day}
-    }))
-
-    savings = list(transactions.find({
-        "user_id": user,
-        "type": "saving",
-        "date": {"$gte": first_day}
-    }))
-
-    total_expense = sum(i["amount"] for i in expenses)
-    total_saving = sum(i["amount"] for i in savings)
-
-    await msg.reply(
-        f"📊 *{today.strftime('%B %Y')} Summary*\n\n"
-        f"💸 Total Spent: ₹{total_expense}\n"
-        f"💰 Total Saved: ₹{total_saving}\n"
-        f"🧾 Records: {len(expenses)} expenses, {len(savings)} savings",
-        parse_mode="Markdown"
-    )
-
-
-# -----------------------------
-# View All Records
-# -----------------------------
-@dp.message_handler(commands=['records'])
-async def show_records(msg: types.Message):
-    user = msg.from_user.id
-    data = transactions.find({"user_id": user}).sort("date", -1)
-
-    text = "📒 *Your Finance Records:*\n\n"
-    empty = True
-
-    for r in data:
-        empty = False
-        date = r['date'].strftime("%d-%m-%Y %H:%M")
-        if r["type"] == "expense":
-            text += f"💸 Expense ₹{r['amount']} — {r['category']} — {date}\n"
-        else:
-            text += f"💰 Saving ₹{r['amount']} — {date}\n"
-
-    if empty:
-        text = "❗ No records found."
-
-    await msg.reply(text, parse_mode="Markdown")
+# dp.register_callback_query_handler(process_add_expense, lambda c: c.data == "add_expense_now")
 
 # -----------------------------
 # inline button handler
@@ -167,7 +44,7 @@ async def process_add_expense(callback):
 # -----------------------------
 
 async def send_daily_reminder():
-    users = db.users.find()
+    users = get_all_users()
 
     # Inline Button
     btn = InlineKeyboardMarkup().add(
@@ -189,7 +66,7 @@ async def send_daily_reminder():
 
 async def on_startup(dp):
     scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
-    scheduler.add_job(send_daily_reminder, "cron", hour=16, minute=6)  
+    scheduler.add_job(send_daily_reminder, "cron", hour=20, minute=0)  # 8 PM IST
     scheduler.start()
     print("Scheduler started!")
 
