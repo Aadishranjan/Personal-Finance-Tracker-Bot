@@ -50,8 +50,6 @@ async def show_records(msg: types.Message):
     for r in data:
         empty = False
 
-        # r['date'] should be tz-aware UTC if using tz_aware=True.
-        # If it's naive UTC, replace .astimezone with .replace(tzinfo=timezone.utc).astimezone(...)
         dt = r['date']
         try:
             india_time = dt.astimezone(ZoneInfo("Asia/Kolkata"))

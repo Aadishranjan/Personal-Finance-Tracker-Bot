@@ -1,13 +1,8 @@
-from aiogram import Bot, Dispatcher, types, executor
+from aiogram import Bot, Dispatcher, executor
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from handlers.expense import add_saving, add_expense
-from handlers.summary import summary, show_records
-from handlers.start import start
+from handlers import add_saving, add_expense, summary, show_records, start
 from db import get_all_users
-import pytz
-from datetime import datetime
-import os
 import config
 
 bot = Bot(token=config.BOT_TOKEN)
