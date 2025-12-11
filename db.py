@@ -6,7 +6,7 @@ client = MongoClient(MONGO_URL)
 db = client[DB_NAME]
 
 users = db.users
-transactions = db.transactions   # one collection for expenses + savings
+transactions = db.transactions  
 
 
 # Save user

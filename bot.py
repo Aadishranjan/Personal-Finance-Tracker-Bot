@@ -1,7 +1,7 @@
-from aiogram import Bot, Dispatcher, executor
+from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from handlers import add_saving, add_expense, summary, show_records, start
+from handlers import add_saving, add_expense, summary, show_records, start, pdf_report, report_year, report_month
 from db import get_all_users
 import config
 
@@ -18,11 +18,16 @@ dp.register_message_handler(add_expense, commands=['expense'])
 dp.register_message_handler(add_saving, commands=['save'])
 dp.register_message_handler(summary, commands=['summary'])
 dp.register_message_handler(show_records, commands=['records'])
+dp.register_message_handler(pdf_report, commands=['report'])
 
-# dp.register_callback_query_handler(process_add_expense, lambda c: c.data == "add_expense_now")
+
+dp.register_callback_query_handler(report_month, lambda c: c.data == "report_month")
+dp.register_callback_query_handler(report_year, lambda c: c.data == "report_year")
+
+
 
 # -----------------------------
-# inline button handler
+# inline Schedule button handler
 # -----------------------------
 @dp.callback_query_handler(lambda c: c.data == "add_expense_now")
 async def process_add_expense(callback):
